@@ -7,6 +7,7 @@ $currentUTCtime = (Get-Date).ToUniversalTime()
 # The 'IsPastDue' porperty is 'true' when the current function invocation is later than scheduled.
 if ($Timer.IsPastDue) {
     Write-Host "PowerShell timer is running late!"
+    return
 }
 
 $scope = "https://graph.microsoft.com/"
@@ -55,6 +56,19 @@ foreach ($group in $groups) {
     #If group has no members, delete it
     if ($count -eq 0) {
         $uri = 'https://graph.microsoft.com/v1.0/groups/' + $group.id
-        Invoke-RestMethod -Uri $uri -Headers $authHeader -Method Delete
+        #Invoke-RestMethod -Uri $uri -Headers $authHeader -Method Delete
+
+        $headers = @{}
+        $headers.Add("Authorization","Bearer $env:SENDGRID_API_KEY")
+        $headers.Add("Content-Type", "application/json")
+    
+        $jsonRequest = [ordered]@{
+                                    personalizations = @(@{to = @(@{email =  "admin@SWOTDEMPID8712.onmicrosoft.com"})
+                                    dynamic_template_data = @{groupname = $group.displayName}})
+                                    template_id = "d-f9fb5d0e15e44602b97028ef3880399a"
+                                    from = @{email = "admin@SWOTDEMPID8712.onmicrosoft.com"}
+                                    
+                                } | ConvertTo-Json -Depth 10
+        Invoke-RestMethod   -Uri "https://api.sendgrid.com/v3/mail/send" -Method Post -Headers $headers -Body $jsonRequest 
     }
 }
